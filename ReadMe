@@ -1,0 +1,137 @@
+# Campus Security and Reporting System (CSRS)
+
+Database design for the **Campus Security and Reporting System**, a project for **Rwanda Polytechnic (RP) Musanze College** by **Group Two**.
+
+CSRS helps the college manage campus safety in one place: incident reporting (including anonymous reports), emergency panic alerts, lost and found, visitor and gate control, security patrols, and full audit logging.
+
+## Tech Stack
+
+| Item     | Choice                          |
+|----------|---------------------------------|
+| DBMS     | PostgreSQL                      |
+| Database | `csrs_db`                       |
+| Script   | `schema.sql`                    |
+
+## Getting Started
+
+```bash
+# 1. Create the database
+createdb csrs_db
+
+# 2. Load the schema
+psql -d csrs_db -f schema.sql
+```
+
+Or from inside `psql`:
+
+```sql
+CREATE DATABASE csrs_db;
+\c csrs_db
+\i schema.sql
+```
+
+> The script creates ENUM types first, so run it on an empty database. To start over, drop and recreate `csrs_db`.
+
+## Database Overview
+
+The schema has **20 tables** (one per entity in SRS 3.5), **7 custom ENUM types**, indexes, and seed data for roles and incident categories, grouped into modules that match the SRS sections.
+
+### 1. Users and Roles (SRS 2.3, 3.1, 3.3.5)
+| Table            | Purpose                                                         |
+|------------------|-----------------------------------------------------------------|
+| `roles`          | Admin, Head of Security, Security Officer, Student, Staff, Dean of Students |
+| `users`          | Login accounts for every actor in the system                    |
+| `students_staff` | Student and staff details imported from college records         |
+
+### 2. Configuration (SRS 2.1, 2.2.1, 3.5)
+| Table                 | Purpose                                        |
+|-----------------------|------------------------------------------------|
+| `incident_categories` | Theft, Assault, Fire, Medical, Vandalism, etc. |
+| `locations`           | Campus places (Library, Block A, Main Gate) with GPS coordinates |
+
+### 3. Incident Management (SRS 2.2.1, 2.2.3, 2.2.4)
+| Table              | Purpose                                                       |
+|--------------------|---------------------------------------------------------------|
+| `incidents`        | Reports with severity and status; `reporter_id` is `NULL` for anonymous reports; `access_code_hash` lets anonymous reporters check status |
+| `evidence`         | Photos, videos and documents attached to an incident          |
+| `incident_updates` | Audit trail of status changes and notes                       |
+| `assignments`      | Supervisors assigning cases to security officers              |
+
+### 4. Emergency Alerts (SRS 2.2.2)
+| Table              | Purpose                                              |
+|--------------------|------------------------------------------------------|
+| `emergency_alerts` | Panic alerts with GPS location and response timestamps |
+
+### 5. Lost and Found (SRS 2.2.5)
+| Table         | Purpose                         |
+|---------------|---------------------------------|
+| `lost_items`  | Items reported lost, with photo and link to a matched found item |
+| `found_items` | Items handed in, with photo and collection/owner verification |
+
+### 6. Visitors and Gate (SRS 2.2.6)
+| Table       | Purpose                                                 |
+|-------------|---------------------------------------------------------|
+| `visitors`  | Visitor details, host, and blacklist flag               |
+| `gate_logs` | Entry/exit times, vehicle and badge numbers, gate officer |
+
+### 7. Patrols and Rosters (SRS 2.2.7)
+| Table           | Purpose                                         |
+|-----------------|-------------------------------------------------|
+| `patrol_routes` | Named patrol routes                             |
+| `checkpoints`   | QR-coded checkpoints along each route           |
+| `patrol_logs`   | Checkpoint scans by officers (Checked / Missed) |
+| `duty_rosters`  | Officer shifts (Morning, Afternoon, Night)      |
+
+### 8. System (SRS 2.2.8, 3.5)
+| Table           | Purpose                                         |
+|-----------------|-------------------------------------------------|
+| `notifications` | In-App, Email, SMS and Push messages to users   |
+| `audit_logs`    | Who did what, on which table, from which IP     |
+
+## ENUM Types
+
+| Type                   | Values                                                                                   |
+|------------------------|------------------------------------------------------------------------------------------|
+| `severity_level`       | Critical, High, Medium, Low                                                              |
+| `incident_status`      | Submitted, Verified, In Progress, Resolved, Closed, Rejected, Duplicate, Escalated       |
+| `alert_status`         | Pending, Acknowledged, Resolved                                                          |
+| `item_status`          | Unclaimed, Matched, Returned                                                             |
+| `found_item_status`    | Available, Claimed                                                                       |
+| `notification_channel` | In-App, Email, SMS, Push                                                                 |
+| `patrol_log_status`    | Checked, Missed                                                                          |
+
+## Seed Data
+
+`schema.sql` inserts the 7 user roles and the 10 incident categories listed in the SRS, so the system is usable straight after setup.
+
+## Key Relationships
+
+- Every account in `users` has one role from `roles`.
+- `students_staff` extends `users` with college record details.
+- `incidents` link to a category, a location, an optional reporter, and an optional assigned officer.
+- `evidence`, `incident_updates` and `assignments` belong to an incident and are deleted with it.
+- `visitors` are tied to a host user; `gate_logs` record each visit and the gate officer.
+- `patrol_routes` have many `checkpoints`; each scan is saved in `patrol_logs`.
+
+## Project Structure
+
+```
+.
+├── schema.sql   # Full PostgreSQL schema for csrs_db
+└── README.md    # This file
+```
+
+## Team
+
+**Group Two**, Rwanda Polytechnic, Musanze College
+
+
+| Name                  | Registration No. |
+|-----------------------|------------------|
+| Murenzi Elvis         | 26RP01872        |
+| Uwizeyimana Claudine  | 26RP00414        |
+| Niyogushimwa Pacifique| 26RP00079        |
+| Patience Igihozo      | 26RP00886        |
+| Gilbert Niyomuremyi   | 26RP00766        |
+
+Source document: *SRS for Group Two – Campus Security and Reporting System* (October 2026).
